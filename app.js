@@ -1,38 +1,65 @@
 const ajax = new XMLHttpRequest();
 const NEWS_URL = "https://api.hnpwa.com/v0/news/1.json";
 const ITEM_URL = "https://api.hnpwa.com/v0/item/@id.json";
+const rootEl = document.getElementById("root");
+const store = {
+  currentPage: 1,
+};
 
 function ajaxFunc(url) {
   ajax.open("GET", url, false);
   ajax.send();
   return JSON.parse(ajax.response);
 }
-const newsFeed = ajaxFunc(NEWS_URL);
 
-const rootEl = document.getElementById("root");
-const ul = document.createElement("ul");
-const itemDiv = document.createElement("div");
-const title = document.createElement("h3");
+const newsFeedFunc = () => {
+  const newsFeed = ajaxFunc(NEWS_URL);
+  let newFeedAry = ["<ul>"];
+  for (let i = (store.currentPage - 1) * 10; i < store.currentPage * 10; i++) {
+    newFeedAry.push(`
+  <li>
+  <a href=#/show/${newsFeed[i].id}>
+  ${newsFeed[i].title} (${newsFeed[i].comments_count})
+  <a>
+  </li>
+  `);
+  }
+  newFeedAry.push("</ul>");
+  newFeedAry.push(`
+    <div>
+      <a href=#/page/${store.currentPage > 1 ? store.currentPage - 1 : 1}>
+      이전으로
+      </a>
+      <a href=#/page/${
+        store.currentPage < newsFeed.length / 10
+          ? store.currentPage + 1
+          : newsFeed.length / 10
+      }>
+      다음으로
+      </a>
+    </div>
+  `);
+  rootEl.innerHTML = newFeedAry.join("");
+};
 
-window.addEventListener("hashchange", () => {
-  const id = location.hash.substr(1);
+const itemFeedFunc = () => {
+  const id = location.hash.substr(7);
   const itemFeed = ajaxFunc(ITEM_URL.replace("@id", id));
-  title.innerHTML = itemFeed.title;
-});
+  rootEl.innerHTML = `
+    <h1>${itemFeed.title}</h1>
 
-for (let i = 0; i < newsFeed.length; i++) {
-  const div = document.createElement("div");
-  div.innerHTML = `
-    <li>
-      <a href=#${newsFeed[i].id}>
-        ${newsFeed[i].title} (${newsFeed[i].comments_count})
-      <a>
-    </li>
+    <div><a href=#/page/${store.currentPage}>목록으로</a></div>
   `;
+};
 
-  ul.appendChild(div.firstElementChild);
-}
+const router = () => {
+  const routePath = location.hash;
+  if (routePath === "") newsFeedFunc();
+  else if (routePath.indexOf("#/page/") >= 0) {
+    store.currentPage = Number(routePath.substr(7));
+    newsFeedFunc();
+  } else itemFeedFunc();
+};
 
-itemDiv.appendChild(title);
-rootEl.appendChild(ul);
-rootEl.appendChild(itemDiv);
+window.addEventListener("hashchange", router);
+router();
